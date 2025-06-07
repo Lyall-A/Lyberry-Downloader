@@ -19,7 +19,7 @@ let fileCount = 0;
         if (isDirectory) fs.mkdirSync(fullSavePath, { recursive: true });
         if (isDirectory === false && fs.existsSync(fullSavePath)) return resolve();
 
-        const shortPath = decodeURIComponent(fullDownloadPath.replace(downloadPath, "")) || "/";
+        const shortPath = `/${decodeURIComponent(fullDownloadPath.replace(downloadPath, ""))}`.replace(/(?<=^\/)\/*/, "");
         
         if (isDirectory) console.log(`Reading directory '${shortPath}'`);
         if (isDirectory === false) console.log(`Downloading '${shortPath}'`);
@@ -39,7 +39,9 @@ let fileCount = 0;
                         if (checkIfDirectory(Buffer.concat(dataChunks))) {
                             isDirectory = true;
                             fs.mkdirSync(fullSavePath, { recursive: true });
-                            console.log(`Reading directory '${shortPath}'`);
+                            process.stdout.write("\x1b[1A");
+                            process.stdout.write("\x1b[2K");
+                            process.stdout.write(`Reading directory '${shortPath}'\n`);
                         }
                     } else {
                         isDirectory = false;
@@ -50,7 +52,9 @@ let fileCount = 0;
                         fileStream = fs.createWriteStream(fullSavePath);
                         for (const chunk of dataChunks) fileStream.write(chunk);
                         dataChunks = null;
-                        console.log(`Downloading '${shortPath}'`);
+                        process.stdout.write("\x1b[1A");
+                        process.stdout.write("\x1b[2K");
+                        process.stdout.write(`Downloading '${shortPath}'\n`);
                     }
                 }
                 if (isDirectory === false) {
@@ -65,6 +69,9 @@ let fileCount = 0;
             httpStream.on("end", async () => {
                 if (isDirectory) {
                     const directoryContents = readDirectory(Buffer.concat(dataChunks));
+                    process.stdout.write("\x1b[1A");
+                    process.stdout.write("\x1b[2K");
+                    process.stdout.write(`Downloading ${directoryContents.map(i => !i.isDirectory).length} file(s) from '${shortPath}'\n`);
                     for (const directoryContent of directoryContents) {
                         await downloadRecursively(path.join(fullDownloadPath, directoryContent.name), path.join(fullSavePath, directoryContent.displayedName), directoryContent.isDirectory);
                     }
@@ -72,7 +79,7 @@ let fileCount = 0;
                 } else {
                     process.stdout.write("\x1b[1A");
                     process.stdout.write("\x1b[2K");
-                    process.stdout.write(`Completed '${shortPath}' in ${(Date.now() - downloadStartDate) / 1000}s\n`);
+                    process.stdout.write(`Downloaded '${shortPath}' in ${(Date.now() - downloadStartDate) / 1000}s\n`);
                     fileCount++;
                     resolve();
                 }
